@@ -1,0 +1,38 @@
+<!doctype html>
+<!--
+  Local stand-in for the OutSystems screen. Served only by "npm run dev" at
+  http://localhost:5173/iframe-test.html (it is not part of the production build).
+  Paste your Amplify URL in the box to check the hosted app loads inside an iframe.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Iframe Embed Test</title>
+    <style>
+      body { margin: 0; background: #eef1f5; font-family: system-ui, sans-serif; }
+      header { background: #1f2a44; color: #ffffff; padding: 12px 20px; }
+      form { display: flex; gap: 8px; padding: 12px 20px; }
+      input { flex: 1; font: inherit; padding: 6px 8px; }
+      main { padding: 0 20px 20px; }
+      iframe { background: #ffffff; border: 0; display: block; }
+    </style>
+  </head>
+  <body>
+    <header>Pretend OutSystems page: the grid below is inside an iframe</header>
+    <form>
+      <input name="src" aria-label="URL to embed" />
+      <button>Load in iframe</button>
+    </form>
+    <main>
+      <!-- Same markup as the OutSystems Expression widget. -->
+      <iframe title="AG Grid POC" width="100%" height="800"></iframe>
+    </main>
+    <script>
+      const src = new URLSearchParams(location.search).get('src') || '/';
+      document.querySelector('input').value = src;
+      document.querySelector('iframe').src = src;
+    </script>
+  </body>
+</html>

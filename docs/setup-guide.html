@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AG Grid POC Setup</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f1f3f6;
+    --text: #1c2330;
+    --muted: #5b6575;
+    --border: #dde1e7;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --ok: #15803d;
+    --ok-soft: #e7f6ec;
+    --warn: #a14a05;
+    --warn-soft: #fff4e0;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --code-value: #7dd3fc;
+    --code-ph: #fbbf24;
+    --radius: 10px;
+    --mono: ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1116;
+      --surface: #161b22;
+      --surface-2: #1f252e;
+      --text: #e6e9ee;
+      --muted: #9aa4b2;
+      --border: #2d343e;
+      --accent: #6ea8fe;
+      --accent-soft: #1a2a45;
+      --ok: #4ade80;
+      --ok-soft: #12301d;
+      --warn: #fbbf24;
+      --warn-soft: #36280c;
+      --code-bg: #0a0d13;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1116;
+    --surface: #161b22;
+    --surface-2: #1f252e;
+    --text: #e6e9ee;
+    --muted: #9aa4b2;
+    --border: #2d343e;
+    --accent: #6ea8fe;
+    --accent-soft: #1a2a45;
+    --ok: #4ade80;
+    --ok-soft: #12301d;
+    --warn: #fbbf24;
+    --warn-soft: #36280c;
+    --code-bg: #0a0d13;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  h1, h2, h3 { line-height: 1.25; }
+  p { margin: 0 0 12px; }
+  ol, ul { margin: 0 0 12px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  li > ol, li > ul { margin-top: 6px; }
+  :not(pre) > code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.88em;
+    padding: 1px 5px;
+    overflow-wrap: anywhere;
+  }
+  kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.85em;
+    padding: 0 5px;
+  }
+
+  .page {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 auto;
+    max-width: 1120px;
+    padding: 24px 16px 64px;
+  }
+  @media (min-width: 960px) {
+    .page { grid-template-columns: 220px minmax(0, 1fr); padding: 40px 24px 96px; }
+  }
+
+  /* Table of contents */
+  .toc { display: none; }
+  @media (min-width: 960px) {
+    .toc { align-self: start; display: block; position: sticky; top: 24px; }
+  }
+  .toc p { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; margin-bottom: 8px; text-transform: uppercase; }
+  .toc ol { counter-reset: toc; list-style: none; margin: 0; padding: 0; }
+  .toc li { margin: 0; }
+  .toc a {
+    border-radius: 6px;
+    color: var(--muted);
+    display: flex;
+    font-size: 14px;
+    gap: 8px;
+    padding: 5px 8px;
+    text-decoration: none;
+  }
+  .toc a:hover { background: var(--surface-2); color: var(--text); }
+  .toc a .tick { color: var(--ok); margin-left: auto; visibility: hidden; }
+  .toc a.done .tick { visibility: visible; }
+
+  /* Header */
+  .hero h1 { font-size: 30px; margin: 0 0 6px; }
+  .hero .sub { color: var(--muted); font-size: 16px; margin-bottom: 20px; }
+  .progress { align-items: center; display: flex; gap: 12px; }
+  .bar { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; flex: 1; height: 10px; overflow: hidden; }
+  .bar span { background: var(--ok); display: block; height: 100%; transition: width .25s; width: 0; }
+  .progress output { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card + .card, .card + .step, .step + .step { margin-top: 20px; }
+  .card h2 { font-size: 18px; margin: 0 0 12px; }
+
+  .values-grid { display: grid; gap: 14px; }
+  @media (min-width: 640px) { .values-grid { grid-template-columns: 1fr 1fr; } }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    padding: 8px 10px;
+    width: 100%;
+  }
+  .field input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+  .field small { color: var(--muted); display: block; font-size: 12px; margin-top: 4px; }
+  .field small.bad { color: var(--warn); }
+  .values-meta { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+
+  /* Overview flow */
+  .flow { align-items: stretch; display: flex; flex-wrap: wrap; gap: 8px; }
+  .node {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex: 1 1 150px;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+  .node strong { display: block; font-size: 14px; }
+  .node span { color: var(--muted); overflow-wrap: anywhere; }
+  .arrow { align-self: center; color: var(--muted); font-size: 18px; }
+  @media (max-width: 639px) { .arrow { display: none; } .node { flex-basis: 100%; } }
+
+  /* Steps */
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    scroll-margin-top: 16px;
+  }
+  .step-head {
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    padding: 14px 20px;
+  }
+  .num {
+    align-items: center;
+    background: var(--accent-soft);
+    border-radius: 50%;
+    color: var(--accent);
+    display: inline-flex;
+    flex: none;
+    font-size: 14px;
+    font-weight: 700;
+    height: 30px;
+    justify-content: center;
+    width: 30px;
+  }
+  .step.is-done .num { background: var(--ok-soft); color: var(--ok); }
+  .step-head h2 { flex: 1; font-size: 18px; margin: 0; }
+  .done-toggle {
+    align-items: center;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 13px;
+    gap: 6px;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .done-toggle input { accent-color: var(--ok); height: 16px; width: 16px; }
+  .step-body { padding: 16px 20px 8px; }
+  .step-body h3 { font-size: 15px; margin: 18px 0 8px; }
+  .step-body h3:first-child { margin-top: 0; }
+  .badge {
+    background: var(--ok-soft);
+    border-radius: 999px;
+    color: var(--ok);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+  }
+
+  /* Code blocks */
+  .code {
+    background: var(--code-bg);
+    border-radius: 8px;
+    margin: 0 0 14px;
+    position: relative;
+  }
+  .code pre {
+    color: var(--code-text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0;
+    overflow-x: auto;
+    padding: 12px 84px 12px 14px;
+  }
+  .code .lang {
+    color: #94a3b8;
+    font-family: var(--mono);
+    font-size: 11px;
+    left: 14px;
+    position: absolute;
+    top: -9px;
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 0 6px;
+  }
+  button.copy {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #e2e8f0;
+    cursor: pointer;
+    font: 600 12px system-ui, sans-serif;
+    padding: 4px 10px;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+  }
+  button.copy:hover { background: #273449; }
+  .inline-copy { align-items: center; display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .inline-copy button.copy { position: static; }
+  [data-v] { color: var(--code-value); }
+  [data-v].ph { color: var(--code-ph); text-decoration: underline dashed; text-underline-offset: 3px; }
+  :not(pre) > code [data-v] { color: var(--accent); }
+  :not(pre) > code [data-v].ph { color: var(--warn); }
+
+  /* Callouts */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 8px 8px 0;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+  }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok { background: var(--ok-soft); border-color: var(--ok); }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+
+  /* Tabs */
+  .tabs { border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+  .tabs button {
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: 600 14px system-ui, sans-serif;
+    margin-bottom: -1px;
+    padding: 8px 12px;
+  }
+  .tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Tables */
+  .table-wrap { margin: 0 0 14px; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 14px; width: 100%; }
+  th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); font-size: 13px; }
+
+  footer.end { color: var(--muted); font-size: 13px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="toc" aria-label="Steps">
+    <p>Steps</p>
+    <ol id="toc"></ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>AG Grid POC setup guide</h1>
+      <p class="sub">Build the React + AG Grid app, host it on AWS Amplify, and show it inside an OutSystems screen. Follow the steps in order and tick each one off as you finish it.</p>
+      <div class="progress">
+        <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+        <output id="progress-text">0 of 0 steps done</output>
+      </div>
+    </header>
+
+    <section class="card" style="margin-top:24px" aria-labelledby="values-title">
+      <h2 id="values-title">Your values</h2>
+      <p>Paste your addresses here once. Every code snippet on this page updates to use them. Values still shown in <span style="color:var(--warn);text-decoration:underline dashed">yellow</span> are placeholders you still need to fill in.</p>
+      <div class="values-grid">
+        <div class="field">
+          <label for="amplify-url">AWS Amplify URL (from step 5)</label>
+          <input id="amplify-url" type="url" placeholder="https://main.xxxx.amplifyapp.com" autocomplete="off" spellcheck="false">
+          <small id="amplify-hint">Shown as "Domain" in Amplify after the first deploy.</small>
+        </div>
+        <div class="field">
+          <label for="os-url">OutSystems environment URL</label>
+          <input id="os-url" type="url" value="https://personal-dutf31t9.outsystemscloud.com" autocomplete="off" spellcheck="false">
+          <small id="os-hint">Copy it from the browser address bar on your published screen (step 9).</small>
+        </div>
+      </div>
+      <p class="values-meta">GitHub repository: <a href="https://github.com/nagagpr/ag-react-poc">github.com/nagagpr/ag-react-poc</a> (branch <code>main</code>) · Project folder: <code>D:\Work\AI_Work\ag-react-poc</code></p>
+    </section>
+
+    <section class="card" aria-labelledby="overview-title">
+      <h2 id="overview-title">How the pieces fit</h2>
+      <div class="flow">
+        <div class="node"><strong>GitHub</strong><span>nagagpr/ag-react-poc</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="node"><strong>AWS Amplify</strong><span>Builds on every push and hosts the React + AG Grid app over HTTPS</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="node"><strong>OutSystems screen</strong><span>Shows the Amplify URL inside an <code>&lt;iframe&gt;</code></span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="node"><strong>User's browser</strong><span>Opens the OutSystems screen and sees the grid</span></div>
+      </div>
+    </section>
+
+    <!-- STEP 1 -->
+    <section class="step" id="install" data-step data-title="Install the tools">
+      <header class="step-head"><span class="num">1</span><h2>Install the tools</h2></header>
+      <div class="step-body">
+        <p>You need these once per computer. Node.js and Git are already installed on this PC.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tool</th><th>Why</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td>Node.js 22 LTS</td><td>Runs and builds the React app</td><td><a href="https://nodejs.org">nodejs.org</a></td></tr>
+            <tr><td>Git</td><td>Sends code to GitHub</td><td><a href="https://git-scm.com">git-scm.com</a></td></tr>
+            <tr><td>AWS account</td><td>Hosts the app on Amplify</td><td><a href="https://aws.amazon.com">aws.amazon.com</a></td></tr>
+            <tr><td>OutSystems Service Studio 11</td><td>Builds the screen that shows the grid</td><td>Already installed</td></tr>
+          </tbody>
+        </table></div>
+        <p>Check the versions in a terminal (PowerShell is fine). Node should be 20.19 or newer.</p>
+        <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>node -v
+git --version</code></pre></div>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="step" id="run" data-step data-title="Run the app locally">
+      <header class="step-head"><span class="num">2</span><h2>Run the app on your computer</h2></header>
+      <div class="step-body">
+        <ol>
+          <li>Open a terminal in <code>D:\Work\AI_Work\ag-react-poc</code>. In VS Code use <b>Terminal → New Terminal</b>. In File Explorer, open the folder, type <code>powershell</code> in the address bar and press <kbd>Enter</kbd>.</li>
+          <li>Install the libraries. You only need this the first time and after pulling new changes.
+            <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>npm install</code></pre></div>
+          </li>
+          <li>Start the development server:
+            <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>npm run dev</code></pre></div>
+          </li>
+          <li>Open <a href="http://localhost:5173">http://localhost:5173</a>. You should see the <b>Orders</b> grid with 500 rows.</li>
+          <li>Try it out:
+            <ul>
+              <li>Type <code>Contoso Germany</code> in <b>Search all columns</b>. 6 rows should remain.</li>
+              <li>Click a column header to sort it, or type in the box under a header to filter.</li>
+              <li>Double-click a <b>Qty</b> or <b>Status</b> cell to edit it. <b>Total</b> recalculates.</li>
+              <li>Tick some rows, then click <b>Export N selected</b> to download a CSV.</li>
+            </ul>
+          </li>
+        </ol>
+        <div class="callout"><p>The page reloads by itself whenever you save a file in <code>src/</code>. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> in the terminal to stop the server.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="step" id="build" data-step data-title="Build and test in an iframe">
+      <header class="step-head"><span class="num">3</span><h2>Build and test inside an iframe</h2></header>
+      <div class="step-body">
+        <h3>Build the production version</h3>
+        <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>npm run build</code></pre></div>
+        <p>This creates a <code>dist</code> folder containing <code>index.html</code> and an <code>assets</code> folder. That folder is the whole website. To preview it:</p>
+        <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>npm run preview</code></pre></div>
+        <h3>Pretend to be OutSystems</h3>
+        <p>Keep <code>npm run preview</code> running, open a <b>second</b> terminal, and run <code>npm run dev</code>. Then open this address:</p>
+        <div class="code"><span class="lang">url</span><button class="copy" type="button">Copy</button><pre><code>http://localhost:5173/iframe-test.html?src=http://localhost:4173/</code></pre></div>
+        <p>The grid should appear inside a page with a dark header, using the same <code>&lt;iframe&gt;</code> markup as OutSystems. After step 5, test your hosted app the same way:</p>
+        <div class="code"><span class="lang">url</span><button class="copy" type="button">Copy</button><pre><code>http://localhost:5173/iframe-test.html?src=<span data-v="amplify-src"></span></code></pre></div>
+      </div>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="step" id="github" data-step data-default-done data-title="Code on GitHub">
+      <header class="step-head"><span class="num">4</span><h2>Put the code on GitHub</h2><span class="badge">Already done</span></header>
+      <div class="step-body">
+        <div class="callout ok"><p>The code is already on <a href="https://github.com/nagagpr/ag-react-poc">github.com/nagagpr/ag-react-poc</a>, branch <code>main</code>. Your access token file is excluded by <code>.gitignore</code> and was never uploaded.</p></div>
+        <h3>When you change the code later</h3>
+        <p>Run these in the project folder. Once step 5 is set up, Amplify rebuilds and redeploys automatically after every push.</p>
+        <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>git add .
+git commit -m "Describe your change"
+git push</code></pre></div>
+        <div class="callout warn"><p>Before committing, run <code>git status</code> and check that no passwords or tokens are listed. You can delete <code>nagagpr_git_pat.txt</code>: Git on this PC already has a saved GitHub sign-in.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 5 -->
+    <section class="step" id="amplify" data-step data-title="Deploy on AWS Amplify">
+      <header class="step-head"><span class="num">5</span><h2>Deploy on AWS Amplify</h2></header>
+      <div class="step-body">
+        <h3>Recommended: connect GitHub (redeploys automatically)</h3>
+        <ol>
+          <li>Open the <a href="https://console.aws.amazon.com/amplify/home">AWS Amplify console</a> and sign in. In the top-right corner, pick a region near your users.</li>
+          <li>Click <b>Create new app</b>.</li>
+          <li>Choose <b>GitHub</b>, then <b>Next</b>. A GitHub window asks you to authorize AWS Amplify. Approve it and give it access to the <code>ag-react-poc</code> repository.</li>
+          <li>Pick repository <code>nagagpr/ag-react-poc</code> and branch <code>main</code>, then click <b>Next</b>.</li>
+          <li>Build settings: Amplify finds <code>amplify.yml</code> in the repo. It installs Node 22, runs <code>npm ci</code> and <code>npm run build</code>, and publishes the <code>dist</code> folder. Leave the settings as they are and click <b>Next</b>.</li>
+          <li>Click <b>Save and deploy</b>. Wait until <b>Provision → Build → Deploy</b> are all green, which takes about 2–4 minutes.</li>
+          <li>Copy the <b>Domain</b> URL, which looks like <code>https://main.d1a2b3c4.amplifyapp.com</code>, and paste it into <a href="#values-title">Your values</a> at the top of this page.</li>
+          <li>Open the URL in your browser. The grid should load.</li>
+        </ol>
+        <h3>Alternative: upload a zip (no GitHub connection)</h3>
+        <ol>
+          <li>Build and zip the site in one command. This creates <code>ag-grid-poc.zip</code> in the project folder.
+            <div class="code"><span class="lang">powershell</span><button class="copy" type="button">Copy</button><pre><code>npm run zip</code></pre></div>
+          </li>
+          <li>In Amplify click <b>Create new app → Deploy without Git → Next</b>, enter an app name and a branch name (<code>main</code>), choose <b>Drag and drop</b>, drop the zip, and click <b>Save and deploy</b>.</li>
+        </ol>
+        <div class="callout warn"><p>Don't zip <code>dist</code> by right-clicking it or with PowerShell's <code>Compress-Archive</code>. Amplify would then show a blank page. Always use <code>npm run zip</code>.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 6 -->
+    <section class="step" id="os-app" data-step data-title="Create the OutSystems app">
+      <header class="step-head"><span class="num">6</span><h2>Create the OutSystems application</h2></header>
+      <div class="step-body">
+        <p>Start on the Service Studio home page that lists your environment's apps (<b>New Application</b>, <b>Install from Forge</b>, and so on). Click <b>Close</b> on any banner.</p>
+        <ol>
+          <li>Click <b>New Application</b>. A dialog titled <b>What are you building?</b> opens.</li>
+          <li>Pick the application type:
+            <ul>
+              <li><b>Traditional Web</b> (bottom row) matches this POC's plan. Choose it.</li>
+              <li><b>Reactive Web App</b> (top left) also works if you'd rather try the newer app type. Step 8 has a tab for each.</li>
+              <li>Skip Tablet App, Phone App, External Web Portal and Service.</li>
+            </ul>
+          </li>
+          <li>Click <b>Next</b>. If you're asked to choose a template, pick the default or empty one. Enter the name <code>AGGridPOC</code> and click <b>Create App</b>.</li>
+          <li>On the application page, click <b>Create Module</b> and keep the suggested name and type. The module editor opens.</li>
+        </ol>
+        <div class="callout"><p>Button names can differ slightly between Service Studio versions. Look for the closest match.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 7 -->
+    <section class="step" id="os-screen" data-step data-title="Add the screen">
+      <header class="step-head"><span class="num">7</span><h2>Add a screen</h2></header>
+      <div class="step-body">
+        <ol>
+          <li>On the right side of the editor, open the <b>Interface</b> tab. It's one of four tabs: Processes, Interface, Logic, Data.</li>
+          <li>Expand <b>UI Flows</b>, right-click <b>MainFlow</b>, and choose <b>Add Screen</b> (called <b>Add Web Screen</b> in Traditional Web).</li>
+          <li>Choose the <b>Empty</b> template, name it <code>AGGridPOC</code>, and click <b>Create Screen</b>.</li>
+          <li>Right-click the new screen in the tree and choose <b>Mark as Default Screen</b>, so the app opens straight onto it. If that option is greyed out and the screen already has a <b>house icon</b>, it's already the default. Nothing to do.</li>
+          <li>Select the screen. In the <b>Properties</b> panel (bottom right), under <b>Roles</b>, tick <b>Anonymous</b> so you don't need to log in during the POC. New screens start with only <b>Registered</b> ticked.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- STEP 8 -->
+    <section class="step" id="os-iframe" data-step data-title="Add the iframe">
+      <header class="step-head"><span class="num">8</span><h2>Put the grid on the screen (iframe)</h2></header>
+      <div class="step-body">
+        <p>The widget toolbox is the narrow panel on the left of the editor, with a search box at the top. Choose the tab that matches the app type you picked in step 6.</p>
+        <div class="callout"><p><b>Not sure which type you created?</b> Right-click your screen in the Interface tab. If the menu shows <b>Add Client Action</b> or <b>Fetch Data from Other Sources</b>, it's a <b>Reactive Web App</b>. Traditional Web shows <b>Add Preparation</b> and <b>Add Screen Action</b> instead.</p></div>
+        <div class="tabs" role="tablist" aria-label="Application type">
+          <button type="button" role="tab" id="tab-btn-traditional" aria-controls="tab-traditional" aria-selected="true">Traditional Web</button>
+          <button type="button" role="tab" id="tab-btn-reactive" aria-controls="tab-reactive" aria-selected="false" tabindex="-1">Reactive Web App</button>
+        </div>
+
+        <div role="tabpanel" id="tab-reactive" aria-labelledby="tab-btn-reactive" hidden>
+          <ol>
+            <li>Search the toolbox for <b>HTML Element</b> and drag it onto the screen's main content area.</li>
+            <li>In <b>Properties</b>, set <b>Tag</b> to <code>iframe</code>.</li>
+            <li>Under <b>Attributes</b>, add each row below. Pick or type the attribute name, then enter the value <b>including the double quotes</b>, because values are OutSystems expressions.</li>
+          </ol>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Attribute</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td><code>src</code></td><td><span class="inline-copy"><code>"<span data-v="amplify-src"></span>"</code><button class="copy" type="button">Copy</button></span></td></tr>
+              <tr><td><code>title</code></td><td><code>"AG Grid POC"</code></td></tr>
+              <tr><td><code>width</code></td><td><code>"100%"</code></td></tr>
+              <tr><td><code>height</code></td><td><code>"800"</code></td></tr>
+              <tr><td><code>style</code></td><td><code>"border:0;display:block;"</code></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div role="tabpanel" id="tab-traditional" aria-labelledby="tab-btn-traditional">
+          <ol>
+            <li>Drag an <b>Expression</b> widget onto the screen's main content area.</li>
+            <li>In <b>Properties</b>, set <b>Escape Content</b> to <code>No</code>. Otherwise the page shows the HTML as text.</li>
+            <li>Set <b>Value</b> to the text below. It's an OutSystems text, so it's wrapped in double quotes and the HTML inside uses single quotes.</li>
+          </ol>
+          <div class="code"><span class="lang">outsystems expression</span><button class="copy" type="button">Copy</button><pre><code>"&lt;iframe src='<span data-v="amplify-src"></span>' title='AG Grid POC' width='100%' height='800' style='border:0;display:block;'&gt;&lt;/iframe&gt;"</code></pre></div>
+          <h3>Optional: make the URL configurable</h3>
+          <ol>
+            <li>In the <b>Data</b> tab, right-click <b>Site Properties</b> and choose <b>Add Site Property</b>. Name it <code>AGGridUrl</code>, set Data Type to <code>Text</code>, and set Default Value to:
+              <div class="code"><button class="copy" type="button">Copy</button><pre><code>"<span data-v="amplify-src"></span>"</code></pre></div>
+            </li>
+            <li>Change the Expression <b>Value</b> to:
+              <div class="code"><span class="lang">outsystems expression</span><button class="copy" type="button">Copy</button><pre><code>"&lt;iframe src='" + Site.AGGridUrl + "' title='AG Grid POC' width='100%' height='800' style='border:0;display:block;'&gt;&lt;/iframe&gt;"</code></pre></div>
+            </li>
+            <li>You can now change the URL in <b>Service Center → Factory → Modules → (your module) → Site Properties</b> without republishing.</li>
+          </ol>
+        </div>
+
+        <div class="callout"><p>The grid fills whatever height the iframe has. Change <code>800</code> to suit your layout.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 9 -->
+    <section class="step" id="publish" data-step data-title="Publish and test">
+      <header class="step-head"><span class="num">9</span><h2>Publish and test</h2></header>
+      <div class="step-body">
+        <ol>
+          <li>Check the <b>TrueChange</b> tab at the bottom of Service Studio. Red items are errors and must be fixed before you can publish. Yellow items are only warnings.</li>
+          <li>Click the green <b>1-Click Publish</b> button at the top, or press <kbd>F5</kbd>. The first publish takes a minute or two.</li>
+          <li>Click <b>Open in Browser</b>. You should see the grid inside your OutSystems page at an address like:
+            <div class="code"><span class="lang">url</span><button class="copy" type="button">Copy</button><pre><code><span data-v="os-origin"></span>/AGGridPOC/</code></pre></div>
+          </li>
+          <li>Copy the start of that address (for example <code>https://personal-dutf31t9.outsystemscloud.com</code>) into the <b>OutSystems environment URL</b> box at the top. Step 10 needs it.</li>
+        </ol>
+        <div class="callout warn"><p><b>Is the grid area blank?</b> Press <kbd>F12</kbd>, open the <b>Console</b> tab, and look up the red error in <a href="#troubleshooting">Troubleshooting</a>.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP 10 -->
+    <section class="step" id="security" data-step data-title="Lock down embedding">
+      <header class="step-head"><span class="num">10</span><h2>Lock down who can embed the grid</h2></header>
+      <div class="step-body">
+        <p>Do this only <b>after</b> step 9 works. That way, if the iframe goes blank, you know this step caused it.</p>
+        <h3>A. Amplify: only allow your OutSystems site to show the app</h3>
+        <ol>
+          <li>In Amplify, open your app, then <b>Hosting → Custom headers → Edit</b>.</li>
+          <li>Paste the text below and click <b>Save</b>. The address must exactly match your OutSystems page: same <code>https</code>, same host name, no trailing slash.
+            <div class="code"><span class="lang">yaml</span><button class="copy" type="button">Copy</button><pre><code>customHeaders:
+  - pattern: '**'
+    headers:
+      - key: 'Content-Security-Policy'
+        value: "frame-ancestors 'self' <span data-v="os-origin"></span> http://localhost:5173"</code></pre></div>
+          </li>
+          <li>Wait a minute, then reload your OutSystems screen. The grid should still show. Other websites can no longer embed it.</li>
+        </ol>
+        <p><code>http://localhost:5173</code> keeps the local test page from step 3 working. Remove it if you don't need that.</p>
+        <h3>B. OutSystems: only if Content Security Policy is turned on</h3>
+        <p>Content Security Policy (CSP) is a setting that controls which sites a page may load. It's usually off in personal environments, and then nothing needs to change. If the OutSystems console shows an error mentioning <code>frame-src</code> or <code>child-src</code>, CSP is on and must allow the Amplify URL:</p>
+        <ol>
+          <li>Open Service Center (<code><span data-v="os-origin"></span>/ServiceCenter</code>), or LifeTime if your company uses it.</li>
+          <li>Go to <b>Administration → Security → Content Security Policy</b>. In LifeTime, look under <b>Environment Security</b>.</li>
+          <li>Add <code><span data-v="amplify-origin"></span></code> to <b>Child-src</b>, save, and republish the app. Don't use a <code>*</code> wildcard.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- STEP 11 -->
+    <section class="step" id="api" data-step data-title="Optional: real data API">
+      <header class="step-head"><span class="num">11</span><h2>Optional: load real data from an API (e.g. FastAPI)</h2></header>
+      <div class="step-body">
+        <p>Right now the grid uses built-in sample data. To load data from your own API instead:</p>
+        <ol>
+          <li>The API must return a JSON array with these field names. You can also rename the <code>field</code> entries in <code>src/App.jsx</code> to match your API.
+            <div class="code"><span class="lang">json</span><button class="copy" type="button">Copy</button><pre><code>[{ "orderId": "ORD-1", "orderDate": "2026-05-11", "customer": "Contoso Ltd",
+   "country": "India", "product": "Webcam HD", "category": "Electronics",
+   "quantity": 3, "unitPrice": 89, "status": "Pending" }]</code></pre></div>
+          </li>
+          <li>Allow the grid's addresses in FastAPI (CORS):
+            <div class="code"><span class="lang">python</span><button class="copy" type="button">Copy</button><pre><code>from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "<span data-v="amplify-origin"></span>"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)</code></pre></div>
+          </li>
+          <li>For local testing, copy <code>.env.example</code> to <code>.env</code>, set the line below, and restart <code>npm run dev</code>. The footer under the grid shows which data source is in use.
+            <div class="code"><span class="lang">.env</span><button class="copy" type="button">Copy</button><pre><code>VITE_API_URL=http://localhost:8000/orders</code></pre></div>
+          </li>
+          <li>For the hosted app, the API must be on a public <b>HTTPS</b> address, because other people's browsers can't reach your PC. In Amplify, go to <b>Hosting → Environment variables</b>, add <code>VITE_API_URL</code> with that HTTPS address, and redeploy.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- TROUBLESHOOTING -->
+    <section class="card" id="troubleshooting" style="margin-top:20px">
+      <h2>Troubleshooting</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>What you see</th><th>Why</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>OutSystems shows the <code>&lt;iframe …&gt;</code> text instead of the grid</td><td>Escape Content is <code>Yes</code> (Traditional)</td><td>Set the Expression's <b>Escape Content</b> to <code>No</code></td></tr>
+          <tr><td>Syntax error on the Expression or attribute value</td><td>Missing or extra quotes</td><td>Copy the values from step 8 exactly, including the outer double quotes</td></tr>
+          <tr><td>Empty space where the grid should be (Reactive)</td><td><b>Tag</b> isn't <code>iframe</code>, or <code>src</code> is missing</td><td>Check the HTML Element properties in step 8</td></tr>
+          <tr><td>Console: <i>Refused to frame … "frame-ancestors"</i></td><td>The Amplify header doesn't list your OutSystems address</td><td>Fix the address in step 10A. It must match exactly.</td></tr>
+          <tr><td>Console: <i>Refused to frame … "frame-src"</i> or <i>"child-src"</i></td><td>OutSystems CSP blocks Amplify</td><td>Step 10B</td></tr>
+          <tr><td>Console: <i>Mixed Content</i></td><td>The iframe URL starts with <code>http://</code></td><td>Use the <code>https://</code> Amplify URL</td></tr>
+          <tr><td>The screen asks you to log in</td><td>The screen's role isn't Anonymous</td><td>Step 7, last item</td></tr>
+          <tr><td><b>Open in Browser</b> shows a different screen</td><td>Another screen is the default</td><td>Right-click your screen and choose <b>Mark as Default Screen</b></td></tr>
+          <tr><td>Amplify URL shows a white page</td><td>Zip made with the wrong tool</td><td>Use <code>npm run zip</code>, or the GitHub option</td></tr>
+          <tr><td>Amplify build fails with <i>Vite requires Node.js version 20.19+</i></td><td>Old Node.js on the build server</td><td>Keep the <code>nvm install 22</code> lines in <code>amplify.yml</code></td></tr>
+          <tr><td>Red banner: <i>Could not load data</i></td><td>Wrong API URL, CORS, or an HTTP API called from an HTTPS page</td><td>Step 11, and check the <b>Network</b> tab in <kbd>F12</kbd></td></tr>
+          <tr><td>Grid squashed or a double scrollbar</td><td>Iframe too short</td><td>Increase <code>height</code> in step 8</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card">
+      <h2>Command reference</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm install</code></td><td>Install libraries (first time, or after pulling changes)</td></tr>
+          <tr><td><code>npm run dev</code></td><td>Development server at http://localhost:5173 with live reload</td></tr>
+          <tr><td><code>npm run build</code></td><td>Production build into <code>dist/</code></td></tr>
+          <tr><td><code>npm run preview</code></td><td>Serve <code>dist/</code> at http://localhost:4173</td></tr>
+          <tr><td><code>npm run zip</code></td><td>Build, then create <code>ag-grid-poc.zip</code> for Amplify drag-and-drop</td></tr>
+          <tr><td><code>git add .</code> → <code>git commit -m "…"</code> → <code>git push</code></td><td>Send changes to GitHub; Amplify redeploys automatically</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer class="end">AG Grid POC · React 19 + AG Grid 36 + Vite 8 · Your ticks and URLs are remembered in this browser only.</footer>
+  </main>
+</div>
+
+<script>
+(() => {
+  const PREFIX = 'agpoc-guide:';
+  const store = {
+    get(key) { try { return localStorage.getItem(PREFIX + key); } catch { return null; } },
+    set(key, value) { try { localStorage.setItem(PREFIX + key, value); } catch { /* storage unavailable */ } },
+  };
+
+  // ---- Your values -> snippets ----
+  const PLACEHOLDER_AMPLIFY = 'https://main.xxxx.amplifyapp.com';
+  const PLACEHOLDER_OS = 'https://your-outsystems-server';
+  const amplifyInput = document.getElementById('amplify-url');
+  const osInput = document.getElementById('os-url');
+  const amplifyHint = document.getElementById('amplify-hint');
+  const osHint = document.getElementById('os-hint');
+  const amplifyHintText = amplifyHint.textContent;
+  const osHintText = osHint.textContent;
+
+  const savedAmplify = store.get('amplify');
+  const savedOs = store.get('os');
+  if (savedAmplify !== null) amplifyInput.value = savedAmplify;
+  if (savedOs !== null) osInput.value = savedOs;
+
+  function httpsOrigin(value) {
+    try {
+      const url = new URL(value.trim());
+      return url.protocol === 'https:' ? url.origin : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function fill(name, text, isPlaceholder) {
+    document.querySelectorAll(`[data-v="${name}"]`).forEach((el) => {
+      el.textContent = text;
+      el.classList.toggle('ph', isPlaceholder);
+    });
+  }
+
+  function hint(el, input, defaultText, origin) {
+    const bad = input.value.trim() !== '' && !origin;
+    el.textContent = bad ? 'Enter the full address starting with https://' : defaultText;
+    el.classList.toggle('bad', bad);
+  }
+
+  function renderValues() {
+    const amplify = httpsOrigin(amplifyInput.value);
+    const os = httpsOrigin(osInput.value);
+    fill('amplify-src', (amplify || PLACEHOLDER_AMPLIFY) + '/', !amplify);
+    fill('amplify-origin', amplify || PLACEHOLDER_AMPLIFY, !amplify);
+    fill('os-origin', os || PLACEHOLDER_OS, !os);
+    hint(amplifyHint, amplifyInput, amplifyHintText, amplify);
+    hint(osHint, osInput, osHintText, os);
+  }
+
+  amplifyInput.addEventListener('input', () => { store.set('amplify', amplifyInput.value); renderValues(); });
+  osInput.addEventListener('input', () => { store.set('os', osInput.value); renderValues(); });
+  renderValues();
+
+  // ---- Step checkboxes, progress and table of contents ----
+  const steps = [...document.querySelectorAll('[data-step]')];
+  const toc = document.getElementById('toc');
+  const bar = document.getElementById('bar');
+  const progressText = document.getElementById('progress-text');
+
+  function renderProgress() {
+    const done = steps.filter((s) => s.classList.contains('is-done')).length;
+    bar.style.width = `${Math.round((done / steps.length) * 100)}%`;
+    progressText.textContent = `${done} of ${steps.length} steps done`;
+  }
+
+  steps.forEach((step, index) => {
+    const saved = store.get('done:' + step.id);
+    const isDone = saved === null ? step.hasAttribute('data-default-done') : saved === '1';
+
+    const label = document.createElement('label');
+    label.className = 'done-toggle';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = isDone;
+    label.append(box, 'Done');
+    step.querySelector('.step-head').append(label);
+
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = '#' + step.id;
+    link.innerHTML = `<span>${index + 1}.</span><span></span><span class="tick" aria-label="done">✓</span>`;
+    link.children[1].textContent = step.dataset.title;
+    li.append(link);
+    toc.append(li);
+
+    const apply = (value) => {
+      step.classList.toggle('is-done', value);
+      link.classList.toggle('done', value);
+    };
+    apply(isDone);
+    box.addEventListener('change', () => {
+      store.set('done:' + step.id, box.checked ? '1' : '0');
+      apply(box.checked);
+      renderProgress();
+    });
+  });
+  renderProgress();
+
+  // ---- Tabs ----
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  function selectTab(tab, focus) {
+    tabs.forEach((t) => {
+      const selected = t === tab;
+      t.setAttribute('aria-selected', String(selected));
+      t.tabIndex = selected ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !selected;
+    });
+    if (focus) tab.focus();
+    store.set('tab', tab.id);
+  }
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => selectTab(tab, false));
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      selectTab(next, true);
+    });
+  });
+  const savedTab = document.getElementById(store.get('tab') || '');
+  if (savedTab && tabs.includes(savedTab)) selectTab(savedTab, false);
+
+  // ---- Copy buttons ----
+  document.addEventListener('click', async (e) => {
+    const button = e.target.closest('button.copy');
+    if (!button) return;
+    const text = button.parentElement.querySelector('code').textContent;
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.append(area);
+      area.select();
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+      area.remove();
+    }
+    button.textContent = copied ? 'Copied' : 'Press Ctrl+C';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+  });
+})();
+</script>
+</body>
+</html>
